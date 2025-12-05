@@ -1,0 +1,180 @@
+Title:
+🕹️ Build a Viral 2-Player Connect-the-Dots Shape/Text Reveal Game
+
+Prompt (copy everything below):
+
+You are an expert full-stack game developer.
+Build a playable, real-time, two-player web game where two players connect hidden dots to slowly reveal a secret shape or text.
+The game must work on desktop and mobile browsers.
+
+🎮 GAME DESCRIPTION
+
+Build a 2-player connect-the-dots multiplayer game with the following rules:
+
+1. Player 2 chooses a hidden shape
+
+Player 2 (the “main character”) can:
+
+Type any text (example: “VANSHIKA”)
+
+Draw any shape on a canvas
+
+Upload an image/sketch
+
+You must convert this into a dot-map:
+
+Extract outline using edge detection
+
+Convert strokes into 150–300 points
+
+Shuffle the dots so shape is NOT obvious
+
+These dots remain hidden initially.
+
+2. Two-player real-time gameplay
+
+The game room is created via link share.
+
+Sync both players using Supabase Realtime or Firebase.
+
+Turn-based system:
+
+On each turn, reveal only 1–2 dots.
+
+Player must click a visible dot.
+
+Connecting the dot reveals the next dot.
+
+Each player's action appears for both players instantly.
+
+3. Strategy system
+
+Dots near the shape boundaries reveal pattern early
+
+Dots in the center hide shape longer
+
+Players must choose dots strategically
+
+Add a small tooltip:
+“Some dots reveal more than others.”
+
+4. Final animation reveal
+
+When ~80% of dots are connected:
+
+Fade out dots
+
+Draw full outline of the shape
+
+Add glow animation using GSAP or Anime.js
+
+Show the hidden designed output:
+Example:
+✨✨ V A N S H I K A ✨✨
+or
+❤️ heart shape
+or the drawn image outline.
+
+This reveal sequence must feel magical and emotional.
+
+Add sound effects.
+
+🎨 UI/UX REQUIREMENTS
+
+Cute, minimal, emotional UI
+
+Dots glow slightly when clickable
+
+Turn indicator (“Your turn” / “Her turn”)
+
+Smooth zoom + pan canvas
+
+Animated reveal at the end
+
+🧠 TECH STACK
+
+Use:
+
+Next.js or React
+
+Canvas API or Konva.js
+
+Supabase Realtime (preferred) for 2-player sync
+
+GSAP for reveal animation
+
+Tailwind CSS for UI
+
+OpenCV.js for extracting dot positions from image/text
+
+🧪 FEATURES TO IMPLEMENT
+
+✔ Convert text → vector path → sample dots
+✔ Draw tool → sample points
+✔ Upload image → outline → points
+✔ Hidden dot mode
+✔ Turn-based multiplayer
+✔ Real-time updates
+✔ Animated reveal
+✔ “Play again” button
+✔ Save and share room link
+
+💾 PROJECT OUTPUT
+
+Provide:
+
+Complete folder structure
+
+Full working code for frontend
+
+Full backend setup with Supabase
+
+Dot generation algorithm
+
+Multiplayer logic
+
+Canvas rendering
+
+Styling
+
+Sounds
+
+Animations
+
+Deployment instructions (Vercel + Supabase)
+
+Also include:
+
+Comments in code
+
+Step-by-step setup guide
+
+Optimized production build
+
+How to add new shapes
+
+🔥 IMPORTANT
+
+The final game must be:
+
+Fast
+
+Simple to play
+
+Beautiful
+
+Emotional
+
+Perfect for a viral YouTube/Instagram reel
+
+When finished, output:
+
+Full code
+
+Explanations
+
+API keys placeholders
+
+Instructions to run locally
+
+Instructions to deploy
