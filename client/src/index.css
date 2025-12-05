@@ -9,8 +9,15 @@
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
-  --background: 0 0% 100%;
-  --foreground: 0 0% 9%;
+  --background: 270 20% 98%;
+  --foreground: 270 15% 15%;
+  
+  /* Game-specific colors */
+  --game-dot: 280 70% 60%;
+  --game-dot-glow: 280 80% 70%;
+  --game-dot-connected: 262 83% 58%;
+  --game-line: 262 70% 55%;
+  --game-canvas: 270 15% 96%;
   --border: 0 0% 91%;
   --card: 0 0% 98%;
   --card-foreground: 0 0% 9%;
@@ -93,8 +100,15 @@
   --opaque-button-border-intensity: 9;
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
-  --background: 0 0% 7%;
-  --foreground: 0 0% 95%;
+  --background: 270 15% 8%;
+  --foreground: 270 10% 95%;
+  
+  /* Game-specific colors - dark mode */
+  --game-dot: 280 75% 65%;
+  --game-dot-glow: 280 85% 75%;
+  --game-dot-connected: 262 80% 65%;
+  --game-line: 262 75% 60%;
+  --game-canvas: 270 10% 12%;
   --border: 0 0% 16%;
   --card: 0 0% 9%;
   --card-foreground: 0 0% 95%;
