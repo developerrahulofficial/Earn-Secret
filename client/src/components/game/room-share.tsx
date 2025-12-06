@@ -11,15 +11,33 @@ interface RoomShareProps {
 }
 
 export function RoomShare({ roomCode, isWaitingForPlayer }: RoomShareProps) {
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const shareUrl = `${window.location.origin}/join/${roomCode}`;
 
-  const handleCopy = async () => {
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(roomCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = roomCode;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    }
+  };
+
+  const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
     } catch {
       const textArea = document.createElement("textarea");
       textArea.value = shareUrl;
@@ -27,23 +45,8 @@ export function RoomShare({ roomCode, isWaitingForPlayer }: RoomShareProps) {
       textArea.select();
       document.execCommand("copy");
       document.body.removeChild(textArea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Join my Connect the Dots game!",
-          text: "I have a secret for you to discover. Join my game!",
-          url: shareUrl,
-        });
-      } catch {
-      }
-    } else {
-      handleCopy();
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
     }
   };
 
@@ -75,10 +78,10 @@ export function RoomShare({ roomCode, isWaitingForPlayer }: RoomShareProps) {
           <Button
             variant="outline"
             className="flex-1"
-            onClick={handleCopy}
-            data-testid="button-copy-link"
+            onClick={handleCopyCode}
+            data-testid="button-copy-code"
           >
-            {copied ? (
+            {copiedCode ? (
               <>
                 <Check className="h-4 w-4 mr-2" />
                 Copied!
@@ -86,17 +89,26 @@ export function RoomShare({ roomCode, isWaitingForPlayer }: RoomShareProps) {
             ) : (
               <>
                 <Copy className="h-4 w-4 mr-2" />
-                Copy Link
+                Copy Code
               </>
             )}
           </Button>
           <Button
             className="flex-1"
-            onClick={handleShare}
-            data-testid="button-share"
+            onClick={handleCopyLink}
+            data-testid="button-copy-link"
           >
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
+            {copiedLink ? (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Share2 className="h-4 w-4 mr-2" />
+                Copy Link
+              </>
+            )}
           </Button>
         </div>
 

@@ -3,16 +3,16 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import {
   createPlayer,
-  createRoom,
-  getRoom,
-  joinRoom,
-  setupGame,
-  startGame,
-  connectDot,
-  setPlayerSocket,
-  removePlayerSocket,
-  broadcastToRoom,
   getPlayer,
+  createRoom,
+  joinRoom as joinGameRoom,
+  getRoomByCode,
+  getRoom,
+  getValidMoves,
+  makeMove,
+  registerPlayerSocket,
+  unregisterPlayerSocket,
+  broadcastToRoom,
 } from "./game";
 import type { WebSocketMessage } from "@shared/schema";
 
@@ -24,193 +24,143 @@ export async function registerRoutes(
 
   wss.on("connection", (ws: WebSocket) => {
     let currentPlayerId: string | null = null;
-    let currentRoomCode: string | null = null;
 
     ws.on("message", (data: Buffer) => {
       try {
         const message: WebSocketMessage = JSON.parse(data.toString());
-        handleMessage(ws, message);
+
+        switch (message.type) {
+          case "register": {
+            const playerId = message.playerId;
+            if (!playerId) return;
+
+            currentPlayerId = playerId;
+            registerPlayerSocket(playerId, ws);
+
+            const player = getPlayer(playerId);
+            if (player && player.roomId) {
+              const room = getRoom(player.roomId);
+              if (room) {
+                ws.send(JSON.stringify({ type: "room_joined", room, playerId }));
+              }
+            }
+            break;
+          }
+
+          case "create_room": {
+            const { playerName, secret } = message;
+            if (!playerName || !secret) return;
+
+            const player = createPlayer(playerName);
+            currentPlayerId = player.id;
+            registerPlayerSocket(player.id, ws);
+
+            const room = createRoom(player.id, secret);
+            ws.send(JSON.stringify({ type: "room_created", room, playerId: player.id }));
+            break;
+          }
+
+          case "join_room": {
+            const { code, playerName, playerId } = message;
+            if (!code || !playerName) return;
+
+            let player;
+            if (playerId) {
+              player = getPlayer(playerId);
+            }
+
+            if (!player) {
+              player = createPlayer(playerName);
+            }
+
+            currentPlayerId = player.id;
+            registerPlayerSocket(player.id, ws);
+
+            const room = getRoomByCode(code);
+            if (!room) {
+              ws.send(JSON.stringify({ type: "error", message: "Room not found" }));
+              return;
+            }
+
+            const joinedRoom = joinGameRoom(room.id, player.id);
+            if (!joinedRoom) {
+              ws.send(JSON.stringify({ type: "error", message: "Room is full" }));
+              return;
+            }
+
+            // Send to joining player
+            ws.send(JSON.stringify({ type: "room_joined", room: joinedRoom, playerId: player.id }));
+
+            // Broadcast to room
+            broadcastToRoom(joinedRoom, {
+              type: "game_started",
+              room: joinedRoom,
+            });
+            break;
+          }
+
+          case "select_square": {
+            const { roomId, playerId, square } = message;
+            if (!roomId || !playerId || !square) return;
+
+            const room = getRoom(roomId);
+            if (!room) {
+              ws.send(JSON.stringify({ type: "error", message: "Room not found" }));
+              return;
+            }
+
+            const validMoves = getValidMoves(roomId, square);
+            room.selectedSquare = square;
+            room.validMoves = validMoves;
+
+            ws.send(JSON.stringify({ type: "square_selected", room, validMoves }));
+            break;
+          }
+
+          case "make_move": {
+            const { roomId, playerId, from, to, promotion } = message;
+            if (!roomId || !playerId || !from || !to) return;
+
+            const result = makeMove(roomId, playerId, from, to, promotion);
+            if (!result.success) {
+              ws.send(JSON.stringify({ type: "invalid_move", message: result.message }));
+              return;
+            }
+
+            // Check if game is over
+            if (result.room!.status === "checkmate") {
+              const gameOverMessage = {
+                type: "game_over",
+                room: result.room,
+                winner: result.room!.winner,
+                secret: result.room!.secretRevealed ? result.room!.secret : undefined,
+              };
+              broadcastToRoom(result.room!, gameOverMessage);
+            } else {
+              // Broadcast move to both players
+              broadcastToRoom(result.room!, {
+                type: "move_made",
+                room: result.room,
+                move: result.move,
+              });
+            }
+            break;
+          }
+        }
       } catch (error) {
-        console.error("Failed to parse message:", error);
-        ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
+        console.error("WebSocket message error:", error);
       }
     });
 
     ws.on("close", () => {
       if (currentPlayerId) {
-        removePlayerSocket(currentPlayerId);
+        unregisterPlayerSocket(currentPlayerId);
       }
     });
 
     ws.on("error", (error) => {
       console.error("WebSocket error:", error);
     });
-
-    function handleMessage(socket: WebSocket, message: WebSocketMessage) {
-      switch (message.type) {
-        case "join_room": {
-          const { roomCode, playerName } = message;
-          const player = createPlayer(playerName);
-          currentPlayerId = player.id;
-          setPlayerSocket(player.id, socket as unknown as WebSocket);
-
-          if (!roomCode || roomCode === "") {
-            const room = createRoom(player);
-            currentRoomCode = room.code;
-            socket.send(JSON.stringify({
-              type: "room_created",
-              room,
-              player,
-            }));
-          } else {
-            const room = joinRoom(roomCode, player);
-            if (!room) {
-              socket.send(JSON.stringify({
-                type: "error",
-                message: "Room not found or full",
-              }));
-              return;
-            }
-            currentRoomCode = room.code;
-
-            socket.send(JSON.stringify({
-              type: "room_joined",
-              room,
-              player,
-              isHost: false,
-            }));
-
-            broadcastToRoom(room, {
-              type: "player_joined",
-              player,
-            }, player.id);
-
-            if (room.player1Id && room.player2Id && room.status === "setup") {
-              const startedRoom = startGame(room.code);
-              if (startedRoom) {
-                broadcastToRoom(startedRoom, {
-                  type: "game_started",
-                  room: startedRoom,
-                });
-              }
-            }
-          }
-          break;
-        }
-
-        case "setup_shape": {
-          if (!currentRoomCode || !currentPlayerId) {
-            socket.send(JSON.stringify({
-              type: "error",
-              message: "Not in a room",
-            }));
-            return;
-          }
-
-          const { shapeType, shapeData } = message;
-          const room = setupGame(currentRoomCode, shapeType, shapeData);
-          
-          if (!room) {
-            socket.send(JSON.stringify({
-              type: "error",
-              message: "Failed to setup game",
-            }));
-            return;
-          }
-
-          const player = getPlayer(currentPlayerId);
-
-          socket.send(JSON.stringify({
-            type: "room_joined",
-            room,
-            player: player || { id: currentPlayerId, name: "Host", roomId: room.id, isHost: true },
-            isHost: true,
-          }));
-
-          if (room.player1Id && room.player2Id) {
-            const startedRoom = startGame(room.code);
-            if (startedRoom) {
-              broadcastToRoom(startedRoom, {
-                type: "game_started",
-                room: startedRoom,
-              });
-            }
-          }
-          break;
-        }
-
-        case "connect_dot": {
-          if (!currentRoomCode || !currentPlayerId) {
-            socket.send(JSON.stringify({
-              type: "error",
-              message: "Not in a game",
-            }));
-            return;
-          }
-
-          const room = getRoom(currentRoomCode);
-          if (!room || room.status !== "playing") {
-            socket.send(JSON.stringify({
-              type: "error",
-              message: "Game not in playing state",
-            }));
-            return;
-          }
-
-          const result = connectDot(currentRoomCode, message.dotId, currentPlayerId);
-          
-          if (!result) {
-            socket.send(JSON.stringify({
-              type: "error",
-              message: "Invalid move",
-            }));
-            return;
-          }
-
-          const { room: updatedRoom, nextDotId } = result;
-
-          broadcastToRoom(updatedRoom, {
-            type: "dot_connected",
-            dotId: message.dotId,
-            nextDotId,
-            room: updatedRoom,
-          });
-
-          if (updatedRoom.status === "revealing") {
-            setTimeout(() => {
-              const currentRoom = getRoom(currentRoomCode!);
-              if (currentRoom) {
-                broadcastToRoom(currentRoom, {
-                  type: "reveal_started",
-                  room: currentRoom,
-                });
-
-                setTimeout(() => {
-                  const finalRoom = getRoom(currentRoomCode!);
-                  if (finalRoom) {
-                    finalRoom.status = "completed";
-                    broadcastToRoom(finalRoom, {
-                      type: "game_completed",
-                      room: finalRoom,
-                    });
-                  }
-                }, 6000);
-              }
-            }, 500);
-          }
-          break;
-        }
-
-        case "ping": {
-          socket.send(JSON.stringify({ type: "pong" }));
-          break;
-        }
-      }
-    }
-  });
-
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
   });
 
   return httpServer;

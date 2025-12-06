@@ -2,63 +2,57 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SoundToggle } from "@/components/sound-toggle";
-import { ShapeCreator } from "@/components/game/shape-creator";
 import { RoomShare } from "@/components/game/room-share";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useSound } from "@/hooks/use-sound";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, Loader2 } from "lucide-react";
-
-type CreateStep = "shape" | "share" | "waiting";
 
 export default function CreateRoom() {
   const [, navigate] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
   const playerName = params.get("name") || "Player";
+  const secret = params.get("secret") || "";
 
-  const { room, player, isHost, isConnected, createRoom, setupShape, error } = useWebSocket();
-  const { isMuted, toggleMute, playClick } = useSound();
+  const { room, player, isHost, isConnected, createRoom, error } = useWebSocket();
+  const { playClick } = useSound();
   
-  const [step, setStep] = useState<CreateStep>("shape");
-  const [shapeData, setShapeData] = useState<{ type: "text" | "drawing" | "image"; data: string } | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
+  // Store player name in sessionStorage
   useEffect(() => {
-    if (isConnected && !room && !isCreating) {
-      setIsCreating(true);
-      createRoom(playerName);
+    if (playerName) {
+      sessionStorage.setItem("playerName", playerName);
     }
-  }, [isConnected, room, playerName, createRoom, isCreating]);
+  }, [playerName]);
 
   useEffect(() => {
-    if (room?.player1Id && step === "share") {
+    if (isConnected && !room && !isCreating && secret) {
+      setIsCreating(true);
+      createRoom(playerName, secret);
+    }
+  }, [isConnected, room, playerName, secret, createRoom, isCreating]);
+
+  useEffect(() => {
+    if (room?.player2Id && room?.status === "active") {
+      // Game has started, navigate to game page
       navigate(`/game/${room.code}`);
     }
-  }, [room, step, navigate]);
-
-  const handleShapeCreated = (type: "text" | "drawing" | "image", data: string) => {
-    playClick();
-    setShapeData({ type, data });
-    setupShape(type, data);
-    setStep("share");
-  };
+  }, [room?.player2Id, room?.status, room?.code, navigate]);
 
   const handleBack = () => {
     playClick();
-    if (step === "share") {
-      setStep("shape");
-    } else {
-      navigate("/");
-    }
+    navigate("/");
   };
 
   if (!isConnected) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
         <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Connecting...</p>
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-cyan-500" />
+          <p className="text-sm sm:text-base text-muted-foreground">Connecting...</p>
         </div>
       </div>
     );
@@ -66,49 +60,56 @@ export default function CreateRoom() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <div className="text-center space-y-4 max-w-md">
-          <p className="text-destructive font-medium">{error}</p>
-          <Button onClick={() => navigate("/")} data-testid="button-go-home">
-            Go Home
-          </Button>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-3 sm:px-4">
+        <Card className="max-w-md w-full border-red-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-red-500 text-base sm:text-lg">Connection Error</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">{error}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleBack} variant="outline" className="w-full text-sm">
+              Go Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!room) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-cyan-500" />
+          <p className="text-muted-foreground">Creating room...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <header className="flex items-center justify-between p-4 border-b border-border">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleBack}
-          data-testid="button-back"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex items-center gap-1">
-          <SoundToggle isMuted={isMuted} onToggle={toggleMute} />
-          <ThemeToggle />
-        </div>
-      </header>
-
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
-        {step === "shape" && (
-          <ShapeCreator
-            onShapeCreated={handleShapeCreated}
-            isLoading={!room}
-          />
-        )}
-
-        {step === "share" && room && (
-          <RoomShare
-            roomCode={room.code}
-            isWaitingForPlayer={!room.player1Id}
-          />
-        )}
-      </main>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>Packet Delivery - Waiting...</CardTitle>
+              <CardDescription>Share the room code to start playing</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <ThemeToggle />
+              <SoundToggle />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <RoomShare roomCode={room.code} />
+          <Button onClick={handleBack} variant="outline" className="w-full">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Leave Room
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

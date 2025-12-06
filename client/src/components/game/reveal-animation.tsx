@@ -9,6 +9,8 @@ interface RevealAnimationProps {
   isActive: boolean;
   shapeType: "text" | "drawing" | "image";
   shapeData: string;
+  winner: "player1" | "player2" | null;
+  isYouWinner: boolean;
   onPlayAgain: () => void;
   onShare?: () => void;
 }
@@ -17,6 +19,8 @@ export function RevealAnimation({
   isActive,
   shapeType,
   shapeData,
+  winner,
+  isYouWinner,
   onPlayAgain,
   onShare,
 }: RevealAnimationProps) {
@@ -134,8 +138,20 @@ export function RevealAnimation({
 
               {stage === "complete" && (
                 <div className="space-y-4 animate-slide-up">
+                  {winner && (
+                    <div className="mb-6">
+                      <h2 className="text-3xl font-bold mb-2">
+                        {isYouWinner ? "🎉 You Win!" : "😔 You Lost"}
+                      </h2>
+                      <p className="text-lg text-muted-foreground">
+                        {isYouWinner 
+                          ? "You revealed enough dots to discover the secret!" 
+                          : "Your opponent revealed more dots and won the secret!"}
+                      </p>
+                    </div>
+                  )}
                   <p className="text-xl text-muted-foreground">
-                    You revealed the secret together!
+                    {isYouWinner || !winner ? "Here's the secret revealed:" : "Here's what they won:"}
                   </p>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                     <Button

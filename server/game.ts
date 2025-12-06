@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
-import type { GameRoom, Dot, Player } from "@shared/schema";
+import type { GameRoom, ChessPiece, Player, PieceType, PieceColor, ChessMove } from "@shared/schema";
+import { WebSocket } from "ws";
 
 const rooms = new Map<string, GameRoom>();
 const players = new Map<string, Player>();
@@ -12,6 +13,27 @@ function generateRoomCode(): string {
     code += chars[Math.floor(Math.random() * chars.length)];
   }
   return code;
+}
+
+function initializeChessBoard(): ChessPiece[] {
+  const pieces: ChessPiece[] = [];
+  
+  // Black pieces (top of board)
+  const backRow: PieceType[] = ["rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook"];
+  for (let i = 0; i < 8; i++) {
+    const file = String.fromCharCode(97 + i); // a-h
+    pieces.push({ type: backRow[i], color: "black", position: `${file}8`, hasMoved: false });
+    pieces.push({ type: "pawn", color: "black", position: `${file}7`, hasMoved: false });
+  }
+  
+  // White pieces (bottom of board)
+  for (let i = 0; i < 8; i++) {
+    const file = String.fromCharCode(97 + i);
+    pieces.push({ type: "pawn", color: "white", position: `${file}2`, hasMoved: false });
+    pieces.push({ type: backRow[i], color: "white", position: `${file}1`, hasMoved: false });
+  }
+  
+  return pieces;
 }
 
 export function createPlayer(name: string): Player {
@@ -29,324 +51,360 @@ export function getPlayer(id: string): Player | undefined {
   return players.get(id);
 }
 
-export function setPlayerSocket(playerId: string, socket: WebSocket): void {
+export function registerPlayerSocket(playerId: string, socket: WebSocket): void {
   playerSockets.set(playerId, socket);
 }
 
-export function getPlayerSocket(playerId: string): WebSocket | undefined {
-  return playerSockets.get(playerId);
-}
-
-export function removePlayerSocket(playerId: string): void {
+export function unregisterPlayerSocket(playerId: string): void {
   playerSockets.delete(playerId);
 }
 
-export function createRoom(hostPlayer: Player): GameRoom {
-  let code = generateRoomCode();
-  while (rooms.has(code)) {
-    code = generateRoomCode();
-  }
-
+export function createRoom(hostPlayerId: string, secret: string): GameRoom {
+  const code = generateRoomCode();
   const room: GameRoom = {
     id: randomUUID(),
     code,
     status: "waiting",
-    player1Id: hostPlayer.id,
+    player1Id: hostPlayerId,
     player2Id: null,
-    currentTurn: "player1",
-    dots: [],
-    connections: [],
-    shapeType: "text",
-    shapeData: "",
-    revealedCount: 0,
-    totalDots: 0,
+    currentTurn: "white",
+    pieces: initializeChessBoard(),
+    moveHistory: [],
+    selectedSquare: null,
+    validMoves: [],
+    winner: null,
+    secret,
+    secretRevealed: false,
     createdAt: Date.now(),
   };
 
-  rooms.set(code, room);
-  hostPlayer.roomId = room.id;
-  hostPlayer.isHost = true;
-  players.set(hostPlayer.id, hostPlayer);
+  rooms.set(room.id, room);
+
+  const player = players.get(hostPlayerId);
+  if (player) {
+    player.roomId = room.id;
+    player.isHost = true;
+  }
 
   return room;
 }
 
-export function getRoom(code: string): GameRoom | undefined {
-  return rooms.get(code.toUpperCase());
+export function getRoomByCode(code: string): GameRoom | undefined {
+  return Array.from(rooms.values()).find((room) => room.code === code);
 }
 
-export function joinRoom(code: string, player: Player): GameRoom | null {
-  const room = rooms.get(code.toUpperCase());
-  if (!room) return null;
-  if (room.player2Id) return null;
+export function getRoom(roomId: string): GameRoom | undefined {
+  return rooms.get(roomId);
+}
 
-  room.player2Id = player.id;
-  player.roomId = room.id;
-  player.isHost = false;
-  players.set(player.id, player);
-  rooms.set(code, room);
+export function joinRoom(roomId: string, playerId: string): GameRoom | null {
+  const room = rooms.get(roomId);
+  if (!room || room.player2Id) return null;
+
+  room.player2Id = playerId;
+  room.status = "active";
+
+  const player = players.get(playerId);
+  if (player) {
+    player.roomId = roomId;
+  }
 
   return room;
 }
 
-function textToDots(text: string, dotCount: number = 200): Dot[] {
-  const dots: Dot[] = [];
-  const chars = text.toUpperCase().split("");
-  const charWidth = 0.8 / chars.length;
-  const startX = 0.1;
-  const centerY = 0.5;
+function squareToCoords(square: string): [number, number] {
+  const file = square.charCodeAt(0) - 97; // a=0, b=1, etc.
+  const rank = parseInt(square[1]) - 1; // 1=0, 2=1, etc.
+  return [file, rank];
+}
 
-  const letterPatterns: Record<string, Array<[number, number]>> = {
-    A: [[0.5, 0], [0, 1], [1, 1], [0.25, 0.6], [0.75, 0.6]],
-    B: [[0, 0], [0, 1], [0.7, 0], [0.7, 0.5], [0.7, 1], [0, 0.5]],
-    C: [[0.8, 0.2], [0.3, 0], [0, 0.5], [0.3, 1], [0.8, 0.8]],
-    D: [[0, 0], [0, 1], [0.6, 0], [0.8, 0.5], [0.6, 1]],
-    E: [[0.8, 0], [0, 0], [0, 0.5], [0.6, 0.5], [0, 1], [0.8, 1]],
-    F: [[0.8, 0], [0, 0], [0, 0.5], [0.6, 0.5], [0, 1]],
-    G: [[0.8, 0.2], [0.3, 0], [0, 0.5], [0.3, 1], [0.8, 0.8], [0.8, 0.5], [0.5, 0.5]],
-    H: [[0, 0], [0, 1], [0, 0.5], [1, 0.5], [1, 0], [1, 1]],
-    I: [[0.2, 0], [0.8, 0], [0.5, 0], [0.5, 1], [0.2, 1], [0.8, 1]],
-    J: [[0.2, 0], [0.8, 0], [0.5, 0], [0.5, 0.8], [0.3, 1], [0, 0.8]],
-    K: [[0, 0], [0, 1], [0, 0.5], [1, 0], [1, 1]],
-    L: [[0, 0], [0, 1], [0.8, 1]],
-    M: [[0, 1], [0, 0], [0.5, 0.5], [1, 0], [1, 1]],
-    N: [[0, 1], [0, 0], [1, 1], [1, 0]],
-    O: [[0.5, 0], [0, 0.5], [0.5, 1], [1, 0.5]],
-    P: [[0, 1], [0, 0], [0.7, 0], [0.7, 0.5], [0, 0.5]],
-    Q: [[0.5, 0], [0, 0.5], [0.5, 1], [1, 0.5], [0.8, 1.1]],
-    R: [[0, 1], [0, 0], [0.7, 0], [0.7, 0.5], [0, 0.5], [0.8, 1]],
-    S: [[0.8, 0.1], [0.2, 0], [0, 0.3], [0.5, 0.5], [1, 0.7], [0.8, 1], [0.2, 0.9]],
-    T: [[0, 0], [1, 0], [0.5, 0], [0.5, 1]],
-    U: [[0, 0], [0, 0.8], [0.5, 1], [1, 0.8], [1, 0]],
-    V: [[0, 0], [0.5, 1], [1, 0]],
-    W: [[0, 0], [0.25, 1], [0.5, 0.5], [0.75, 1], [1, 0]],
-    X: [[0, 0], [1, 1], [0.5, 0.5], [1, 0], [0, 1]],
-    Y: [[0, 0], [0.5, 0.5], [1, 0], [0.5, 1]],
-    Z: [[0, 0], [1, 0], [0, 1], [1, 1]],
+function coordsToSquare(file: number, rank: number): string {
+  return String.fromCharCode(97 + file) + (rank + 1);
+}
+
+function getPieceAt(pieces: ChessPiece[], square: string): ChessPiece | null {
+  return pieces.find(p => p.position === square) || null;
+}
+
+function isSquareUnderAttack(pieces: ChessPiece[], square: string, byColor: PieceColor): boolean {
+  // Check if any piece of 'byColor' can attack 'square'
+  for (const piece of pieces) {
+    if (piece.color === byColor) {
+      const moves = getValidMovesForPiece(pieces, piece, true);
+      if (moves.includes(square)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function getValidMovesForPiece(pieces: ChessPiece[], piece: ChessPiece, ignoreCheck: boolean = false): string[] {
+  const moves: string[] = [];
+  const [file, rank] = squareToCoords(piece.position);
+
+  const addMoveIfValid = (newFile: number, newRank: number, canCapture: boolean = true): boolean => {
+    if (newFile < 0 || newFile > 7 || newRank < 0 || newRank > 7) return false;
+    const targetSquare = coordsToSquare(newFile, newRank);
+    const targetPiece = getPieceAt(pieces, targetSquare);
+    
+    if (targetPiece) {
+      if (canCapture && targetPiece.color !== piece.color) {
+        moves.push(targetSquare);
+      }
+      return false; // Blocked
+    }
+    moves.push(targetSquare);
+    return true; // Can continue in this direction
   };
 
-  const defaultPattern: Array<[number, number]> = [[0.5, 0], [0.5, 1]];
-  const dotsPerChar = Math.floor(dotCount / chars.length);
-
-  chars.forEach((char, charIndex) => {
-    const pattern = letterPatterns[char] || defaultPattern;
-    const charStartX = startX + charIndex * charWidth;
-
-    for (let i = 0; i < dotsPerChar; i++) {
-      const t = i / dotsPerChar;
-      const segmentIndex = Math.floor(t * (pattern.length - 1));
-      const segmentT = (t * (pattern.length - 1)) % 1;
-
-      const p1 = pattern[segmentIndex];
-      const p2 = pattern[Math.min(segmentIndex + 1, pattern.length - 1)];
-
-      const x = charStartX + (p1[0] + (p2[0] - p1[0]) * segmentT) * charWidth * 0.8;
-      const y = centerY - 0.2 + (p1[1] + (p2[1] - p1[1]) * segmentT) * 0.4;
-
-      const jitterX = (Math.random() - 0.5) * 0.02;
-      const jitterY = (Math.random() - 0.5) * 0.02;
-
-      dots.push({
-        id: randomUUID(),
-        x: Math.max(0.05, Math.min(0.95, x + jitterX)),
-        y: Math.max(0.05, Math.min(0.95, y + jitterY)),
-        revealed: false,
-        connected: false,
-        order: i + charIndex * dotsPerChar,
-        strategyWeight: Math.random(),
-      });
-    }
-  });
-
-  return shuffleDots(dots);
-}
-
-function drawingToDots(drawingData: string, dotCount: number = 200): Dot[] {
-  const dots: Dot[] = [];
-  
-  try {
-    const data = JSON.parse(drawingData);
-    const strokes = data.strokes as Array<Array<{ x: number; y: number }>>;
-    const width = data.width as number;
-    const height = data.height as number;
-
-    let totalPoints = 0;
-    strokes.forEach((stroke) => (totalPoints += stroke.length));
-
-    strokes.forEach((stroke) => {
-      const strokeDots = Math.floor((stroke.length / totalPoints) * dotCount);
-      const step = Math.max(1, Math.floor(stroke.length / strokeDots));
-
-      stroke.forEach((point, index) => {
-        if (index % step === 0) {
-          dots.push({
-            id: randomUUID(),
-            x: point.x / width,
-            y: point.y / height,
-            revealed: false,
-            connected: false,
-            order: dots.length,
-            strategyWeight: Math.random(),
-          });
+  switch (piece.type) {
+    case "pawn": {
+      const direction = piece.color === "white" ? 1 : -1;
+      const startRank = piece.color === "white" ? 1 : 6;
+      
+      // Forward move
+      if (!getPieceAt(pieces, coordsToSquare(file, rank + direction))) {
+        moves.push(coordsToSquare(file, rank + direction));
+        
+        // Double move from start
+        if (rank === startRank && !getPieceAt(pieces, coordsToSquare(file, rank + 2 * direction))) {
+          moves.push(coordsToSquare(file, rank + 2 * direction));
         }
-      });
-    });
-  } catch {
-    for (let i = 0; i < dotCount; i++) {
-      const angle = (i / dotCount) * Math.PI * 2;
-      dots.push({
-        id: randomUUID(),
-        x: 0.5 + Math.cos(angle) * 0.3,
-        y: 0.5 + Math.sin(angle) * 0.3,
-        revealed: false,
-        connected: false,
-        order: i,
-        strategyWeight: Math.random(),
-      });
+      }
+      
+      // Captures
+      for (const df of [-1, 1]) {
+        const captureSquare = coordsToSquare(file + df, rank + direction);
+        const target = getPieceAt(pieces, captureSquare);
+        if (target && target.color !== piece.color) {
+          moves.push(captureSquare);
+        }
+      }
+      break;
+    }
+
+    case "knight": {
+      const knightMoves = [
+        [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+        [1, -2], [1, 2], [2, -1], [2, 1]
+      ];
+      for (const [df, dr] of knightMoves) {
+        addMoveIfValid(file + df, rank + dr);
+      }
+      break;
+    }
+
+    case "bishop": {
+      for (const [df, dr] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+        for (let i = 1; i < 8; i++) {
+          if (!addMoveIfValid(file + df * i, rank + dr * i)) break;
+        }
+      }
+      break;
+    }
+
+    case "rook": {
+      for (const [df, dr] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        for (let i = 1; i < 8; i++) {
+          if (!addMoveIfValid(file + df * i, rank + dr * i)) break;
+        }
+      }
+      break;
+    }
+
+    case "queen": {
+      for (const [df, dr] of [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]) {
+        for (let i = 1; i < 8; i++) {
+          if (!addMoveIfValid(file + df * i, rank + dr * i)) break;
+        }
+      }
+      break;
+    }
+
+    case "king": {
+      for (const [df, dr] of [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]) {
+        addMoveIfValid(file + df, rank + dr);
+      }
+      
+      // Castling
+      if (!piece.hasMoved && !ignoreCheck) {
+        // Kingside
+        const kingsideRook = pieces.find(p => 
+          p.type === "rook" && p.color === piece.color && 
+          p.position === coordsToSquare(7, rank) && !p.hasMoved
+        );
+        if (kingsideRook && 
+            !getPieceAt(pieces, coordsToSquare(5, rank)) &&
+            !getPieceAt(pieces, coordsToSquare(6, rank)) &&
+            !isSquareUnderAttack(pieces, piece.position, piece.color === "white" ? "black" : "white") &&
+            !isSquareUnderAttack(pieces, coordsToSquare(5, rank), piece.color === "white" ? "black" : "white")) {
+          moves.push(coordsToSquare(6, rank));
+        }
+        
+        // Queenside
+        const queensideRook = pieces.find(p => 
+          p.type === "rook" && p.color === piece.color && 
+          p.position === coordsToSquare(0, rank) && !p.hasMoved
+        );
+        if (queensideRook &&
+            !getPieceAt(pieces, coordsToSquare(1, rank)) &&
+            !getPieceAt(pieces, coordsToSquare(2, rank)) &&
+            !getPieceAt(pieces, coordsToSquare(3, rank)) &&
+            !isSquareUnderAttack(pieces, piece.position, piece.color === "white" ? "black" : "white") &&
+            !isSquareUnderAttack(pieces, coordsToSquare(3, rank), piece.color === "white" ? "black" : "white")) {
+          moves.push(coordsToSquare(2, rank));
+        }
+      }
+      break;
     }
   }
 
-  return shuffleDots(dots);
+  // Filter out moves that would leave king in check
+  if (!ignoreCheck) {
+    return moves.filter(move => !wouldBeInCheck(pieces, piece, move));
+  }
+
+  return moves;
 }
 
-function imageToDots(imageData: string, dotCount: number = 200): Dot[] {
-  const dots: Dot[] = [];
+function wouldBeInCheck(pieces: ChessPiece[], piece: ChessPiece, toSquare: string): boolean {
+  // Simulate the move
+  const simulatedPieces = pieces.map(p => ({ ...p }));
+  const movingPiece = simulatedPieces.find(p => p.position === piece.position);
+  const capturedPieceIndex = simulatedPieces.findIndex(p => p.position === toSquare);
   
-  for (let i = 0; i < dotCount; i++) {
-    const angle = (i / dotCount) * Math.PI * 2;
-    const radius = 0.2 + (i % 3) * 0.1;
+  if (!movingPiece) return true;
+  
+  movingPiece.position = toSquare;
+  if (capturedPieceIndex !== -1) {
+    simulatedPieces.splice(capturedPieceIndex, 1);
+  }
+  
+  // Find king
+  const king = simulatedPieces.find(p => p.type === "king" && p.color === piece.color);
+  if (!king) return true;
+  
+  return isSquareUnderAttack(simulatedPieces, king.position, piece.color === "white" ? "black" : "white");
+}
+
+export function getValidMoves(roomId: string, square: string): string[] {
+  const room = rooms.get(roomId);
+  if (!room) return [];
+  
+  const piece = getPieceAt(room.pieces, square);
+  if (!piece || piece.color !== room.currentTurn) return [];
+  
+  return getValidMovesForPiece(room.pieces, piece);
+}
+
+export function makeMove(
+  roomId: string,
+  playerId: string,
+  from: string,
+  to: string,
+  promotion?: PieceType
+): { success: boolean; message?: string; room?: GameRoom; move?: ChessMove } {
+  const room = rooms.get(roomId);
+  if (!room) return { success: false, message: "Room not found" };
+  
+  // Check if it's this player's turn
+  const isPlayer1 = room.player1Id === playerId;
+  const expectedColor: PieceColor = isPlayer1 ? "white" : "black";
+  if (room.currentTurn !== expectedColor) {
+    return { success: false, message: "Not your turn" };
+  }
+  
+  const piece = getPieceAt(room.pieces, from);
+  if (!piece || piece.color !== expectedColor) {
+    return { success: false, message: "Invalid piece selection" };
+  }
+  
+  const validMoves = getValidMovesForPiece(room.pieces, piece);
+  if (!validMoves.includes(to)) {
+    return { success: false, message: "Invalid move" };
+  }
+  
+  // Execute move
+  const capturedPiece = getPieceAt(room.pieces, to);
+  piece.position = to;
+  piece.hasMoved = true;
+  
+  if (capturedPiece) {
+    const index = room.pieces.indexOf(capturedPiece);
+    room.pieces.splice(index, 1);
+  }
+  
+  // Handle castling
+  if (piece.type === "king" && Math.abs(squareToCoords(from)[0] - squareToCoords(to)[0]) === 2) {
+    const [toFile] = squareToCoords(to);
+    const [fromFile, rank] = squareToCoords(from);
+    if (toFile > fromFile) {
+      // Kingside
+      const rook = getPieceAt(room.pieces, coordsToSquare(7, rank));
+      if (rook) rook.position = coordsToSquare(5, rank);
+    } else {
+      // Queenside
+      const rook = getPieceAt(room.pieces, coordsToSquare(0, rank));
+      if (rook) rook.position = coordsToSquare(3, rank);
+    }
+  }
+  
+  // Handle pawn promotion
+  if (piece.type === "pawn") {
+    const [, toRank] = squareToCoords(to);
+    if (toRank === 0 || toRank === 7) {
+      piece.type = promotion || "queen";
+    }
+  }
+  
+  // Check for check/checkmate
+  const opponentColor: PieceColor = expectedColor === "white" ? "black" : "white";
+  const opponentKing = room.pieces.find(p => p.type === "king" && p.color === opponentColor);
+  const isCheck = opponentKing ? isSquareUnderAttack(room.pieces, opponentKing.position, expectedColor) : false;
+  
+  let isCheckmate = false;
+  if (isCheck) {
+    // Check if opponent has any valid moves
+    const hasValidMove = room.pieces
+      .filter(p => p.color === opponentColor)
+      .some(p => getValidMovesForPiece(room.pieces, p).length > 0);
     
-    dots.push({
-      id: randomUUID(),
-      x: 0.5 + Math.cos(angle) * radius,
-      y: 0.5 + Math.sin(angle) * radius,
-      revealed: false,
-      connected: false,
-      order: i,
-      strategyWeight: Math.random(),
-    });
+    if (!hasValidMove) {
+      isCheckmate = true;
+      room.status = "checkmate";
+      room.winner = isPlayer1 ? "player1" : "player2";
+      
+      // Reveal secret if player 2 wins
+      if (!isPlayer1) {
+        room.secretRevealed = true;
+      }
+    } else {
+      room.status = "check";
+    }
   }
-
-  return shuffleDots(dots);
-}
-
-function shuffleDots(dots: Dot[]): Dot[] {
-  const shuffled = [...dots];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  
+  const move: ChessMove = {
+    from,
+    to,
+    piece: piece.type,
+    captured: capturedPiece?.type,
+    isCheck,
+    isCheckmate,
+    promotion,
+    timestamp: Date.now(),
+  };
+  
+  room.moveHistory.push(move);
+  room.currentTurn = opponentColor;
+  room.selectedSquare = null;
+  room.validMoves = [];
+  
+  if (room.status !== "checkmate") {
+    room.status = isCheck ? "check" : "active";
   }
-  return shuffled;
-}
-
-export function setupGame(
-  code: string,
-  shapeType: "text" | "drawing" | "image",
-  shapeData: string
-): GameRoom | null {
-  const room = rooms.get(code.toUpperCase());
-  if (!room) return null;
-
-  let dots: Dot[];
-  switch (shapeType) {
-    case "text":
-      dots = textToDots(shapeData, 150);
-      break;
-    case "drawing":
-      dots = drawingToDots(shapeData, 200);
-      break;
-    case "image":
-      dots = imageToDots(shapeData, 180);
-      break;
-    default:
-      dots = [];
-  }
-
-  if (dots.length > 0) {
-    dots[0].revealed = true;
-    dots[1].revealed = true;
-  }
-
-  room.status = "setup";
-  room.shapeType = shapeType;
-  room.shapeData = shapeData;
-  room.dots = dots;
-  room.totalDots = dots.length;
-  room.revealedCount = 2;
-  rooms.set(code.toUpperCase(), room);
-
-  return room;
-}
-
-export function startGame(code: string): GameRoom | null {
-  const room = rooms.get(code.toUpperCase());
-  if (!room || !room.player1Id || !room.player2Id) return null;
-
-  room.status = "playing";
-  room.currentTurn = "player2";
-  rooms.set(code, room);
-
-  return room;
-}
-
-export function connectDot(code: string, dotId: string, playerId: string): { room: GameRoom; nextDotId: string | null } | null {
-  const room = rooms.get(code.toUpperCase());
-  if (!room || room.status !== "playing") return null;
-
-  const isPlayer1Turn = room.currentTurn === "player1";
-  const isValidPlayer = 
-    (isPlayer1Turn && room.player1Id === playerId) ||
-    (!isPlayer1Turn && room.player2Id === playerId);
-
-  if (!isValidPlayer) return null;
-
-  const dot = room.dots.find((d) => d.id === dotId);
-  if (!dot || !dot.revealed || dot.connected) return null;
-
-  dot.connected = true;
-
-  const lastConnectedDot = room.dots.find((d) => 
-    d.connected && d.id !== dotId
-  );
-  if (lastConnectedDot) {
-    room.connections.push({ from: lastConnectedDot.id, to: dotId });
-  }
-
-  const unrevealedDots = room.dots.filter((d) => !d.revealed);
-  let nextDotId: string | null = null;
-
-  if (unrevealedDots.length > 0) {
-    const sortedByWeight = [...unrevealedDots].sort((a, b) => b.strategyWeight - a.strategyWeight);
-    const nextDot = sortedByWeight[0];
-    nextDot.revealed = true;
-    nextDotId = nextDot.id;
-    room.revealedCount++;
-  }
-
-  room.currentTurn = isPlayer1Turn ? "player2" : "player1";
-
-  const progress = room.revealedCount / room.totalDots;
-  if (progress >= 0.8) {
-    room.status = "revealing";
-    
-    room.dots.forEach((d) => {
-      d.revealed = true;
-      d.connected = true;
-    });
-  }
-
-  rooms.set(code, room);
-  return { room, nextDotId };
-}
-
-export function completeReveal(code: string): GameRoom | null {
-  const room = rooms.get(code.toUpperCase());
-  if (!room) return null;
-
-  room.status = "completed";
-  rooms.set(code, room);
-
-  return room;
+  
+  return { success: true, room, move };
 }
 
 export function getPlayersInRoom(room: GameRoom): Player[] {

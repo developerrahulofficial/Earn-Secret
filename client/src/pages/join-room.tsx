@@ -20,6 +20,13 @@ export default function JoinRoom() {
   
   const [hasJoined, setHasJoined] = useState(false);
 
+  // Store player name in sessionStorage
+  useEffect(() => {
+    if (playerName) {
+      sessionStorage.setItem("playerName", playerName);
+    }
+  }, [playerName]);
+
   useEffect(() => {
     if (isConnected && code && !hasJoined) {
       setHasJoined(true);
@@ -28,7 +35,7 @@ export default function JoinRoom() {
   }, [isConnected, code, playerName, joinRoom, hasJoined]);
 
   useEffect(() => {
-    if (room && room.status === "playing") {
+    if (room && (room.status === "active" || room.status === "check" || room.status === "checkmate" || room.status === "stalemate")) {
       navigate(`/game/${room.code}`);
     }
   }, [room, navigate]);
@@ -39,8 +46,8 @@ export default function JoinRoom() {
 
   if (!isConnected) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="text-center space-y-3 sm:space-y-4">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground">Connecting...</p>
         </div>
