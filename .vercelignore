@@ -1,0 +1,8 @@
+node_modules
+.env
+.git
+*.log
+.DS_Store
+client/src
+server
+script
