@@ -200,7 +200,7 @@ function ChessGame({ room, player, isPlayer1, isMyTurn, selectedSquare, setSelec
 
     const isWinner = 
       (room.winner === "player1" && isPlayer1) || 
-      (room.winner === "player2" && !isPlayer1);
+      (room.winner === "player2" && isPlayer2);
 
     return (
       <Card className="absolute inset-0 m-auto w-11/12 max-w-md h-fit z-50 p-6 sm:p-8 text-center animate-slide-up bg-background/95 backdrop-blur">
@@ -376,7 +376,7 @@ function ConnectFourGame({ room, player, isPlayer1, isMyTurn, sendMessage, playM
 
     const isWinner = 
       (room.winner === "player1" && isPlayer1) || 
-      (room.winner === "player2" && !isPlayer1);
+      (room.winner === "player2" && isPlayer2);
 
     return (
       <Card className="absolute inset-0 m-auto w-11/12 max-w-md h-fit z-50 p-6 sm:p-8 text-center animate-slide-up bg-background/95 backdrop-blur">
