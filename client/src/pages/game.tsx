@@ -81,23 +81,23 @@ export default function Game() {
 
   // Render chess game
   if (room.gameType === "chess") {
-    return <ChessGame room={room} player={player} isPlayer1={isPlayer1} isMyTurn={isMyTurn} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} validMoves={validMoves} setValidMoves={setValidMoves} sendMessage={sendMessage} playMove={playMove} handleBack={handleBack} isMuted={isMuted} toggleMute={toggleMute} />;
+    return <ChessGame room={room} player={player} isPlayer1={isPlayer1} isPlayer2={isPlayer2} isMyTurn={isMyTurn} selectedSquare={selectedSquare} setSelectedSquare={setSelectedSquare} validMoves={validMoves} setValidMoves={setValidMoves} sendMessage={sendMessage} playMove={playMove} handleBack={handleBack} isMuted={isMuted} toggleMute={toggleMute} />;
   }
 
   // Render Connect Four game
   if (room.gameType === "connect-four") {
-    return <ConnectFourGame room={room} player={player} isPlayer1={isPlayer1} isMyTurn={isMyTurn} sendMessage={sendMessage} playMove={playMove} handleBack={handleBack} isMuted={isMuted} toggleMute={toggleMute} />;
+    return <ConnectFourGame room={room} player={player} isPlayer1={isPlayer1} isPlayer2={isPlayer2} isMyTurn={isMyTurn} sendMessage={sendMessage} playMove={playMove} handleBack={handleBack} isMuted={isMuted} toggleMute={toggleMute} />;
   }
 
   // Render Tic Tac Toe game
   if (room.gameType === "tic-tac-toe") {
-    return <TicTacToeGame room={room} player={player} isPlayer1={isPlayer1} isMyTurn={isMyTurn} sendMessage={sendMessage} playMove={playMove} handleBack={handleBack} isMuted={isMuted} toggleMute={toggleMute} />;
+    return <TicTacToeGame room={room} player={player} isPlayer1={isPlayer1} isPlayer2={isPlayer2} isMyTurn={isMyTurn} sendMessage={sendMessage} playMove={playMove} handleBack={handleBack} isMuted={isMuted} toggleMute={toggleMute} />;
   }
 
   return null;
 }
 
-function ChessGame({ room, player, isPlayer1, isMyTurn, selectedSquare, setSelectedSquare, validMoves, setValidMoves, sendMessage, playMove, handleBack, isMuted, toggleMute }: any) {
+function ChessGame({ room, player, isPlayer1, isPlayer2, isMyTurn, selectedSquare, setSelectedSquare, validMoves, setValidMoves, sendMessage, playMove, handleBack, isMuted, toggleMute }: any) {
   const handleSquareClick = (square: string) => {
     if (!isMyTurn || room.status !== "active" && room.status !== "check") return;
 
@@ -341,7 +341,7 @@ function ChessGame({ room, player, isPlayer1, isMyTurn, selectedSquare, setSelec
   );
 }
 
-function ConnectFourGame({ room, player, isPlayer1, isMyTurn, sendMessage, playMove, handleBack, isMuted, toggleMute }: any) {
+function ConnectFourGame({ room, player, isPlayer1, isPlayer2, isMyTurn, sendMessage, playMove, handleBack, isMuted, toggleMute }: any) {
   const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
 
   const handleColumnClick = (col: number) => {
@@ -500,7 +500,7 @@ function ConnectFourGame({ room, player, isPlayer1, isMyTurn, sendMessage, playM
   );
 }
 
-function TicTacToeGame({ room, player, isPlayer1, isMyTurn, sendMessage, playMove, handleBack, isMuted, toggleMute }: any) {
+function TicTacToeGame({ room, player, isPlayer1, isPlayer2, isMyTurn, sendMessage, playMove, handleBack, isMuted, toggleMute }: any) {
   const [hoveredCell, setHoveredCell] = useState<number | null>(null);
 
   const handleCellClick = (position: number) => {
