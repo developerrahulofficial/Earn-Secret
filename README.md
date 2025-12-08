@@ -7,6 +7,8 @@ A real-time multiplayer game where two players take turns connecting dots to for
 ![React](https://img.shields.io/badge/React-18-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue)
 
+<img width="3080" height="1816" alt="image" src="https://github.com/user-attachments/assets/585152ed-fbe9-4772-93c3-ea8516dfe486" />
+
 ## ✨ Features
 
 - 🎯 **Real-time Multiplayer** - Play with friends using room codes
