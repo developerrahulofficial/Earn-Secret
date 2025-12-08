@@ -207,7 +207,7 @@ function ChessGame({ room, player, isPlayer1, isMyTurn, selectedSquare, setSelec
         <div className="flex flex-col items-center gap-4">
           <Trophy className={`h-16 w-16 ${isWinner ? "text-yellow-500" : "text-muted-foreground"}`} />
           <h2 className="text-2xl sm:text-3xl font-bold">
-            {room.status === "draw" ? "Draw!" : isWinner ? "You Won! ðŸŽ‰" : "You Lost"}
+            {room.status === "draw" ? "Draw!" : isWinner ? "You Won! 🎉" : "You Lost"}
           </h2>
           {room.status === "checkmate" && (
             <p className="text-muted-foreground">
@@ -216,7 +216,7 @@ function ChessGame({ room, player, isPlayer1, isMyTurn, selectedSquare, setSelec
           )}
           {room.secretRevealed && room.secret && (
             <div className="mt-4 p-4 bg-purple-500/10 rounded-lg border-2 border-purple-500/30">
-              <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-2">ðŸ”“ Secret Revealed:</p>
+              <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-2">🔔 Secret Revealed:</p>
               <p className="text-sm">{room.secret}</p>
             </div>
           )}
@@ -383,7 +383,7 @@ function ConnectFourGame({ room, player, isPlayer1, isMyTurn, sendMessage, playM
         <div className="flex flex-col items-center gap-4">
           <Trophy className={`h-16 w-16 ${isWinner ? "text-yellow-500" : "text-muted-foreground"}`} />
           <h2 className="text-2xl sm:text-3xl font-bold">
-            {room.status === "draw" ? "Draw!" : isWinner ? "You Won! ðŸŽ‰" : "You Lost"}
+            {room.status === "draw" ? "Draw!" : isWinner ? "You Won! 🎉" : "You Lost"}
           </h2>
           {room.status === "won" && (
             <p className="text-muted-foreground">
@@ -392,7 +392,7 @@ function ConnectFourGame({ room, player, isPlayer1, isMyTurn, sendMessage, playM
           )}
           {room.secretRevealed && room.secret && (
             <div className="mt-4 p-4 bg-purple-500/10 rounded-lg border-2 border-purple-500/30">
-              <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-2">ðŸ”“ Secret Revealed:</p>
+              <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-2">🔔 Secret Revealed:</p>
               <p className="text-sm">{room.secret}</p>
             </div>
           )}
