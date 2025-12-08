@@ -6,32 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
-<<<<<<< Updated upstream
-import { Crown, Users, ArrowRight, Lock } from "lucide-react";
-=======
 import { Crown, Users, ArrowRight, Lock, Grid3x3 } from "lucide-react";
 import type { GameType } from "@shared/schema";
->>>>>>> Stashed changes
 
 export default function Home() {
   const [, navigate] = useLocation();
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [secret, setSecret] = useState("");
-<<<<<<< Updated upstream
-  const [mode, setMode] = useState<"select" | "create" | "join">("select");
-
-  const handleCreate = () => {
-    if (playerName.trim() && secret.trim()) {
-      navigate(`/create?name=${encodeURIComponent(playerName.trim())}&secret=${encodeURIComponent(secret.trim())}`);
-=======
   const [mode, setMode] = useState<"select" | "game-select" | "create" | "join">("select");
   const [gameType, setGameType] = useState<GameType>("chess");
 
   const handleCreate = () => {
     if (playerName.trim() && secret.trim()) {
       navigate(`/create?name=${encodeURIComponent(playerName.trim())}&secret=${encodeURIComponent(secret.trim())}&gameType=${gameType}`);
->>>>>>> Stashed changes
     }
   };
 
@@ -56,17 +44,10 @@ export default function Home() {
             className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 bg-clip-text text-transparent px-4"
             data-testid="text-game-title"
           >
-<<<<<<< Updated upstream
-            Secret Stakes Chess
-          </h1>
-          <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-md mx-auto px-4">
-            Play chess with a twist - if Black wins, White's secret is revealed!
-=======
             Secret Stakes Games
           </h1>
           <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-md mx-auto px-4">
             Play chess or Connect Four with a twist - if Player 2 wins, Player 1's secret is revealed!
->>>>>>> Stashed changes
           </p>
         </div>
 
@@ -97,11 +78,7 @@ export default function Home() {
                 <Button
                   size="lg"
                   className="h-auto py-4 sm:py-6 flex-col gap-1 sm:gap-2"
-<<<<<<< Updated upstream
-                  onClick={() => setMode("create")}
-=======
                   onClick={() => setMode("game-select")}
->>>>>>> Stashed changes
                   disabled={!playerName.trim()}
                   data-testid="button-create-game"
                 >
@@ -127,27 +104,6 @@ export default function Home() {
             <Card>
               <CardHeader className="pb-3 sm:pb-4">
                 <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-<<<<<<< Updated upstream
-                  <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                  Create Your Secret
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  Write a secret message. It will only be revealed if Black (Player 2) wins!
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 sm:space-y-4">
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Playing as <strong className="text-foreground">{playerName}</strong> (White pieces)
-                </p>
-                <Textarea
-                  placeholder="Your secret message... (e.g., 'I ate the last cookie!' or 'I have a crush on...')"
-                  value={secret}
-                  onChange={(e) => setSecret(e.target.value.slice(0, 500))}
-                  className="min-h-[100px] sm:min-h-[120px] resize-none text-sm"
-                  maxLength={500}
-                />
-                <p className="text-xs text-muted-foreground">{secret.length}/500 characters</p>
-=======
                   <Crown className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   Choose Your Game
                 </CardTitle>
@@ -185,27 +141,16 @@ export default function Home() {
                     <span className="text-sm sm:text-base">Tic Tac Toe</span>
                   </Button>
                 </div>
->>>>>>> Stashed changes
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     onClick={() => setMode("select")}
-<<<<<<< Updated upstream
-                    data-testid="button-back"
-=======
->>>>>>> Stashed changes
                     className="text-sm"
                   >
                     Back
                   </Button>
                   <Button
                     className="flex-1 text-sm"
-<<<<<<< Updated upstream
-                    onClick={handleCreate}
-                    disabled={!secret.trim()}
-                    data-testid="button-continue-create"
-                  >
-=======
                     onClick={() => setMode("create")}
                   >
                     Continue
@@ -254,7 +199,6 @@ export default function Home() {
                     disabled={!secret.trim()}
                     data-testid="button-continue-create"
                   >
->>>>>>> Stashed changes
                     Create Game
                     <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-2" />
                   </Button>

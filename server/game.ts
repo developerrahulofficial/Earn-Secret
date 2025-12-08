@@ -1,9 +1,5 @@
 import { randomUUID } from "crypto";
-<<<<<<< Updated upstream
-import type { GameRoom, ChessPiece, Player, PieceType, PieceColor, ChessMove } from "@shared/schema";
-=======
 import type { GameRoom, ChessPiece, Player, PieceType, PieceColor, ChessMove, GameType, ConnectFourMove, ConnectFourBoard, TicTacToeMove, TicTacToeBoard } from "@shared/schema";
->>>>>>> Stashed changes
 import { WebSocket } from "ws";
 
 const rooms = new Map<string, GameRoom>();
@@ -40,8 +36,6 @@ function initializeChessBoard(): ChessPiece[] {
   return pieces;
 }
 
-<<<<<<< Updated upstream
-=======
 function initializeConnectFourBoard(): ConnectFourBoard {
   const grid: (null | "red" | "yellow")[][] = [];
   for (let row = 0; row < 6; row++) {
@@ -54,7 +48,6 @@ function initializeTicTacToeBoard(): TicTacToeBoard {
   return { grid: new Array(9).fill(null), winningLine: null };
 }
 
->>>>>>> Stashed changes
 export function createPlayer(name: string): Player {
   const player: Player = {
     id: randomUUID(),
@@ -78,11 +71,7 @@ export function unregisterPlayerSocket(playerId: string): void {
   playerSockets.delete(playerId);
 }
 
-<<<<<<< Updated upstream
-export function createRoom(hostPlayerId: string, secret: string): GameRoom {
-=======
 export function createRoom(hostPlayerId: string, secret: string, gameType: GameType = "chess"): GameRoom {
->>>>>>> Stashed changes
   const code = generateRoomCode();
   const room: GameRoom = {
     id: randomUUID(),
@@ -91,13 +80,6 @@ export function createRoom(hostPlayerId: string, secret: string, gameType: GameT
     status: "waiting",
     player1Id: hostPlayerId,
     player2Id: null,
-<<<<<<< Updated upstream
-    currentTurn: "white",
-    pieces: initializeChessBoard(),
-    moveHistory: [],
-    selectedSquare: null,
-    validMoves: [],
-=======
     currentTurn: "player1",
     pieces: gameType === "chess" ? initializeChessBoard() : [],
     moveHistory: [],
@@ -107,7 +89,6 @@ export function createRoom(hostPlayerId: string, secret: string, gameType: GameT
     connectFourMoves: gameType === "connect-four" ? [] : undefined,
     ticTacToeBoard: gameType === "tic-tac-toe" ? initializeTicTacToeBoard() : undefined,
     ticTacToeMoves: gameType === "tic-tac-toe" ? [] : undefined,
->>>>>>> Stashed changes
     winner: null,
     secret,
     secretRevealed: false,
@@ -329,15 +310,11 @@ export function getValidMoves(roomId: string, square: string): string[] {
   if (!room) return [];
   
   const piece = getPieceAt(room.pieces, square);
-<<<<<<< Updated upstream
-  if (!piece || piece.color !== room.currentTurn) return [];
-=======
   if (!piece) return [];
   
   // Check if it's the correct player's turn
   const pieceOwner = piece.color === "white" ? "player1" : "player2";
   if (pieceOwner !== room.currentTurn) return [];
->>>>>>> Stashed changes
   
   return getValidMovesForPiece(room.pieces, piece);
 }
@@ -354,13 +331,6 @@ export function makeMove(
   
   // Check if it's this player's turn
   const isPlayer1 = room.player1Id === playerId;
-<<<<<<< Updated upstream
-  const expectedColor: PieceColor = isPlayer1 ? "white" : "black";
-  if (room.currentTurn !== expectedColor) {
-    return { success: false, message: "Not your turn" };
-  }
-  
-=======
   const currentPlayer = isPlayer1 ? "player1" : "player2";
   if (room.currentTurn !== currentPlayer) {
     return { success: false, message: "Not your turn" };
@@ -368,7 +338,6 @@ export function makeMove(
   
   const expectedColor: PieceColor = isPlayer1 ? "white" : "black";
   
->>>>>>> Stashed changes
   const piece = getPieceAt(room.pieces, from);
   if (!piece || piece.color !== expectedColor) {
     return { success: false, message: "Invalid piece selection" };
@@ -450,11 +419,7 @@ export function makeMove(
   };
   
   room.moveHistory.push(move);
-<<<<<<< Updated upstream
-  room.currentTurn = opponentColor;
-=======
   room.currentTurn = isPlayer1 ? "player2" : "player1";
->>>>>>> Stashed changes
   room.selectedSquare = null;
   room.validMoves = [];
   
