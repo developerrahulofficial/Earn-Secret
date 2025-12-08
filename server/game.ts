@@ -1,5 +1,9 @@
 import { randomUUID } from "crypto";
+<<<<<<< Updated upstream
 import type { GameRoom, ChessPiece, Player, PieceType, PieceColor, ChessMove } from "@shared/schema";
+=======
+import type { GameRoom, ChessPiece, Player, PieceType, PieceColor, ChessMove, GameType, ConnectFourMove, ConnectFourBoard, TicTacToeMove, TicTacToeBoard } from "@shared/schema";
+>>>>>>> Stashed changes
 import { WebSocket } from "ws";
 
 const rooms = new Map<string, GameRoom>();
@@ -36,6 +40,21 @@ function initializeChessBoard(): ChessPiece[] {
   return pieces;
 }
 
+<<<<<<< Updated upstream
+=======
+function initializeConnectFourBoard(): ConnectFourBoard {
+  const grid: (null | "red" | "yellow")[][] = [];
+  for (let row = 0; row < 6; row++) {
+    grid.push(new Array(7).fill(null));
+  }
+  return { grid, lastMove: null };
+}
+
+function initializeTicTacToeBoard(): TicTacToeBoard {
+  return { grid: new Array(9).fill(null), winningLine: null };
+}
+
+>>>>>>> Stashed changes
 export function createPlayer(name: string): Player {
   const player: Player = {
     id: randomUUID(),
@@ -59,19 +78,36 @@ export function unregisterPlayerSocket(playerId: string): void {
   playerSockets.delete(playerId);
 }
 
+<<<<<<< Updated upstream
 export function createRoom(hostPlayerId: string, secret: string): GameRoom {
+=======
+export function createRoom(hostPlayerId: string, secret: string, gameType: GameType = "chess"): GameRoom {
+>>>>>>> Stashed changes
   const code = generateRoomCode();
   const room: GameRoom = {
     id: randomUUID(),
     code,
+    gameType,
     status: "waiting",
     player1Id: hostPlayerId,
     player2Id: null,
+<<<<<<< Updated upstream
     currentTurn: "white",
     pieces: initializeChessBoard(),
     moveHistory: [],
     selectedSquare: null,
     validMoves: [],
+=======
+    currentTurn: "player1",
+    pieces: gameType === "chess" ? initializeChessBoard() : [],
+    moveHistory: [],
+    selectedSquare: null,
+    validMoves: [],
+    connectFourBoard: gameType === "connect-four" ? initializeConnectFourBoard() : undefined,
+    connectFourMoves: gameType === "connect-four" ? [] : undefined,
+    ticTacToeBoard: gameType === "tic-tac-toe" ? initializeTicTacToeBoard() : undefined,
+    ticTacToeMoves: gameType === "tic-tac-toe" ? [] : undefined,
+>>>>>>> Stashed changes
     winner: null,
     secret,
     secretRevealed: false,
@@ -293,7 +329,15 @@ export function getValidMoves(roomId: string, square: string): string[] {
   if (!room) return [];
   
   const piece = getPieceAt(room.pieces, square);
+<<<<<<< Updated upstream
   if (!piece || piece.color !== room.currentTurn) return [];
+=======
+  if (!piece) return [];
+  
+  // Check if it's the correct player's turn
+  const pieceOwner = piece.color === "white" ? "player1" : "player2";
+  if (pieceOwner !== room.currentTurn) return [];
+>>>>>>> Stashed changes
   
   return getValidMovesForPiece(room.pieces, piece);
 }
@@ -310,11 +354,21 @@ export function makeMove(
   
   // Check if it's this player's turn
   const isPlayer1 = room.player1Id === playerId;
+<<<<<<< Updated upstream
   const expectedColor: PieceColor = isPlayer1 ? "white" : "black";
   if (room.currentTurn !== expectedColor) {
     return { success: false, message: "Not your turn" };
   }
   
+=======
+  const currentPlayer = isPlayer1 ? "player1" : "player2";
+  if (room.currentTurn !== currentPlayer) {
+    return { success: false, message: "Not your turn" };
+  }
+  
+  const expectedColor: PieceColor = isPlayer1 ? "white" : "black";
+  
+>>>>>>> Stashed changes
   const piece = getPieceAt(room.pieces, from);
   if (!piece || piece.color !== expectedColor) {
     return { success: false, message: "Invalid piece selection" };
@@ -396,7 +450,11 @@ export function makeMove(
   };
   
   room.moveHistory.push(move);
+<<<<<<< Updated upstream
   room.currentTurn = opponentColor;
+=======
+  room.currentTurn = isPlayer1 ? "player2" : "player1";
+>>>>>>> Stashed changes
   room.selectedSquare = null;
   room.validMoves = [];
   
@@ -430,3 +488,228 @@ export function broadcastToRoom(room: GameRoom, message: unknown, excludePlayerI
     }
   });
 }
+
+// Connect Four game logic
+export function makeConnectFourMove(
+  roomId: string,
+  playerId: string,
+  column: number
+): { success: boolean; room?: GameRoom; move?: ConnectFourMove; error?: string } {
+  const room = rooms.get(roomId);
+  if (!room || !room.connectFourBoard) {
+    return { success: false, error: "Room not found or not a Connect Four game" };
+  }
+
+  if (room.status !== "active") {
+    return { success: false, error: "Game is not active" };
+  }
+
+  const currentPlayer = room.currentTurn;
+  if (
+    (currentPlayer === "player1" && playerId !== room.player1Id) ||
+    (currentPlayer === "player2" && playerId !== room.player2Id)
+  ) {
+    return { success: false, error: "Not your turn" };
+  }
+
+  if (column < 0 || column > 6) {
+    return { success: false, error: "Invalid column" };
+  }
+
+  const board = room.connectFourBoard;
+  
+  // Find the lowest empty row in the column
+  let row = -1;
+  for (let r = 5; r >= 0; r--) {
+    if (board.grid[r][column] === null) {
+      row = r;
+      break;
+    }
+  }
+
+  if (row === -1) {
+    return { success: false, error: "Column is full" };
+  }
+
+  const color = currentPlayer === "player1" ? "red" : "yellow";
+  board.grid[row][column] = color;
+  board.lastMove = { row, col: column };
+
+  const move: ConnectFourMove = {
+    column,
+    row,
+    player: currentPlayer,
+    timestamp: Date.now(),
+  };
+
+  if (room.connectFourMoves) {
+    room.connectFourMoves.push(move);
+  }
+
+  // Check for winner
+  const hasWon = checkConnectFourWin(board, row, column, color);
+  const isBoardFull = checkConnectFourDraw(board);
+
+  if (hasWon) {
+    room.status = "won";
+    room.winner = currentPlayer;
+    
+    // Reveal secret if player2 wins
+    if (currentPlayer === "player2") {
+      room.secretRevealed = true;
+    }
+  } else if (isBoardFull) {
+    room.status = "draw";
+    room.winner = "draw";
+  } else {
+    room.currentTurn = currentPlayer === "player1" ? "player2" : "player1";
+  }
+
+  return { success: true, room, move };
+}
+
+function checkConnectFourWin(
+  board: ConnectFourBoard,
+  row: number,
+  col: number,
+  color: "red" | "yellow"
+): boolean {
+  // Check horizontal
+  let count = 1;
+  for (let c = col - 1; c >= 0 && board.grid[row][c] === color; c--) count++;
+  for (let c = col + 1; c < 7 && board.grid[row][c] === color; c++) count++;
+  if (count >= 4) return true;
+
+  // Check vertical
+  count = 1;
+  for (let r = row - 1; r >= 0 && board.grid[r][col] === color; r--) count++;
+  for (let r = row + 1; r < 6 && board.grid[r][col] === color; r++) count++;
+  if (count >= 4) return true;
+
+  // Check diagonal (top-left to bottom-right)
+  count = 1;
+  for (let r = row - 1, c = col - 1; r >= 0 && c >= 0 && board.grid[r][c] === color; r--, c--) count++;
+  for (let r = row + 1, c = col + 1; r < 6 && c < 7 && board.grid[r][c] === color; r++, c++) count++;
+  if (count >= 4) return true;
+
+  // Check diagonal (top-right to bottom-left)
+  count = 1;
+  for (let r = row - 1, c = col + 1; r >= 0 && c < 7 && board.grid[r][c] === color; r--, c++) count++;
+  for (let r = row + 1, c = col - 1; r < 6 && c >= 0 && board.grid[r][c] === color; r++, c--) count++;
+  if (count >= 4) return true;
+
+  return false;
+}
+
+function checkConnectFourDraw(board: ConnectFourBoard): boolean {
+  // Check if top row is full
+  for (let col = 0; col < 7; col++) {
+    if (board.grid[0][col] === null) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Tic Tac Toe game logic
+export function makeTicTacToeMove(
+  roomId: string,
+  playerId: string,
+  position: number
+): { success: boolean; room?: GameRoom; move?: TicTacToeMove; error?: string } {
+  const room = rooms.get(roomId);
+  if (!room || !room.ticTacToeBoard) {
+    return { success: false, error: "Room not found or not a Tic Tac Toe game" };
+  }
+
+  if (room.status !== "active") {
+    return { success: false, error: "Game is not active" };
+  }
+
+  const currentPlayer = room.currentTurn;
+  if (
+    (currentPlayer === "player1" && playerId !== room.player1Id) ||
+    (currentPlayer === "player2" && playerId !== room.player2Id)
+  ) {
+    return { success: false, error: "Not your turn" };
+  }
+
+  if (position < 0 || position > 8) {
+    return { success: false, error: "Invalid position" };
+  }
+
+  const board = room.ticTacToeBoard;
+  
+  // Check if position is already taken
+  if (board.grid[position] !== null) {
+    return { success: false, error: "Position already taken" };
+  }
+
+  // Store player identifier (player1 or player2) in grid
+  board.grid[position] = currentPlayer;
+
+  const move: TicTacToeMove = {
+    position,
+    player: currentPlayer,
+    timestamp: Date.now(),
+  };
+
+  if (room.ticTacToeMoves) {
+    room.ticTacToeMoves.push(move);
+  }
+
+  // Check for winner
+  const winResult = checkTicTacToeWin(board, currentPlayer);
+  const isDraw = checkTicTacToeDraw(board);
+
+  if (winResult.hasWon) {
+    room.status = "won";
+    room.winner = currentPlayer;
+    board.winningLine = winResult.line;
+    
+    // Reveal secret if player2 wins
+    if (currentPlayer === "player2") {
+      room.secretRevealed = true;
+    }
+  } else if (isDraw) {
+    room.status = "draw";
+    room.winner = "draw";
+  } else {
+    room.currentTurn = currentPlayer === "player1" ? "player2" : "player1";
+  }
+
+  return { success: true, room, move };
+}
+
+function checkTicTacToeWin(
+  board: TicTacToeBoard,
+  player: "player1" | "player2"
+): { hasWon: boolean; line: number[] | null } {
+  const winningCombinations = [
+    [0, 1, 2], // top row
+    [3, 4, 5], // middle row
+    [6, 7, 8], // bottom row
+    [0, 3, 6], // left column
+    [1, 4, 7], // middle column
+    [2, 5, 8], // right column
+    [0, 4, 8], // diagonal top-left to bottom-right
+    [2, 4, 6], // diagonal top-right to bottom-left
+  ];
+
+  for (const combination of winningCombinations) {
+    if (
+      board.grid[combination[0]] === player &&
+      board.grid[combination[1]] === player &&
+      board.grid[combination[2]] === player
+    ) {
+      return { hasWon: true, line: combination };
+    }
+  }
+
+  return { hasWon: false, line: null };
+}
+
+function checkTicTacToeDraw(board: TicTacToeBoard): boolean {
+  return board.grid.every(cell => cell !== null);
+}
+

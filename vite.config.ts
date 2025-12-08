@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from "url";
+<<<<<<< Updated upstream
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -36,6 +37,13 @@ async function loadReplitPlugins() {
 }
 
 export default defineConfig(async () => ({
+=======
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export default defineConfig({
+>>>>>>> Stashed changes
   plugins: [
     react(),
     ...(await loadReplitPlugins()),

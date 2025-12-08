@@ -40,6 +40,8 @@ export function useSound() {
   const playConnect = useCallback(() => playSound("connect"), [playSound]);
   const playReveal = useCallback(() => playSound("reveal"), [playSound]);
   const playComplete = useCallback(() => playSound("complete"), [playSound]);
+  // Play sound when making a move in the game
+  const playMove = useCallback(() => playSound("click"), [playSound]);
 
   const toggleMute = useCallback(() => {
     setIsMuted((prev) => {
@@ -56,5 +58,6 @@ export function useSound() {
     playConnect,
     playReveal,
     playComplete,
+    playMove,
   };
 }

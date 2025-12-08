@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { WebSocketMessage, GameRoom, Player } from "@shared/schema";
+import type { WebSocketMessage, GameRoom, Player, GameType } from "@shared/schema";
 
 interface WebSocketState {
   isConnected: boolean;
@@ -188,9 +188,15 @@ export function useWebSocket() {
     }
   }, []);
 
+<<<<<<< Updated upstream
   const createRoom = useCallback((playerName: string, secret: string) => {
     sessionStorage.setItem("playerName", playerName);
     sendMessage({ type: "create_room", playerName, secret });
+=======
+  const createRoom = useCallback((playerName: string, secret: string, gameType: GameType = "chess") => {
+    sessionStorage.setItem("playerName", playerName);
+    sendMessage({ type: "create_room", playerName, secret, gameType });
+>>>>>>> Stashed changes
   }, [sendMessage]);
 
   const joinRoom = useCallback((code: string, playerName: string) => {

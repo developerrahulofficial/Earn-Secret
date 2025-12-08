@@ -10,6 +10,11 @@ import {
   getRoom,
   getValidMoves,
   makeMove,
+<<<<<<< Updated upstream
+=======
+  makeConnectFourMove,
+  makeTicTacToeMove,
+>>>>>>> Stashed changes
   registerPlayerSocket,
   unregisterPlayerSocket,
   broadcastToRoom,
@@ -48,14 +53,23 @@ export async function registerRoutes(
           }
 
           case "create_room": {
+<<<<<<< Updated upstream
             const { playerName, secret } = message;
             if (!playerName || !secret) return;
+=======
+            const { playerName, secret, gameType } = message;
+            if (!playerName || !secret || !gameType) return;
+>>>>>>> Stashed changes
 
             const player = createPlayer(playerName);
             currentPlayerId = player.id;
             registerPlayerSocket(player.id, ws);
 
+<<<<<<< Updated upstream
             const room = createRoom(player.id, secret);
+=======
+            const room = createRoom(player.id, secret, gameType);
+>>>>>>> Stashed changes
             ws.send(JSON.stringify({ type: "room_created", room, playerId: player.id }));
             break;
           }
@@ -118,6 +132,7 @@ export async function registerRoutes(
           }
 
           case "make_move": {
+<<<<<<< Updated upstream
             const { roomId, playerId, from, to, promotion } = message;
             if (!roomId || !playerId || !from || !to) return;
 
@@ -143,6 +158,98 @@ export async function registerRoutes(
                 room: result.room,
                 move: result.move,
               });
+=======
+            const { roomId, playerId, from, to, column, position, promotion } = message;
+            if (!roomId || !playerId) return;
+
+            const room = getRoom(roomId);
+            if (!room) {
+              ws.send(JSON.stringify({ type: "error", message: "Room not found" }));
+              return;
+            }
+
+            // Handle Tic Tac Toe move
+            if (room.gameType === "tic-tac-toe" && position !== undefined) {
+              const result = makeTicTacToeMove(roomId, playerId, position);
+              if (!result.success) {
+                ws.send(JSON.stringify({ type: "invalid_move", message: result.error }));
+                return;
+              }
+
+              // Check if game is over
+              if (result.room!.status === "won" || result.room!.status === "draw") {
+                const gameOverMessage = {
+                  type: "game_over",
+                  room: result.room,
+                  winner: result.room!.winner,
+                  secret: result.room!.secretRevealed ? result.room!.secret : undefined,
+                };
+                broadcastToRoom(result.room!, gameOverMessage);
+              } else {
+                // Broadcast move to both players
+                broadcastToRoom(result.room!, {
+                  type: "move_made",
+                  room: result.room,
+                  ticTacToeMove: result.move,
+                });
+              }
+              return;
+            }
+
+            // Handle Connect Four move
+            if (room.gameType === "connect-four" && column !== undefined) {
+              const result = makeConnectFourMove(roomId, playerId, column);
+              if (!result.success) {
+                ws.send(JSON.stringify({ type: "invalid_move", message: result.error }));
+                return;
+              }
+
+              // Check if game is over
+              if (result.room!.status === "won" || result.room!.status === "draw") {
+                const gameOverMessage = {
+                  type: "game_over",
+                  room: result.room,
+                  winner: result.room!.winner,
+                  secret: result.room!.secretRevealed ? result.room!.secret : undefined,
+                };
+                broadcastToRoom(result.room!, gameOverMessage);
+              } else {
+                // Broadcast move to both players
+                broadcastToRoom(result.room!, {
+                  type: "move_made",
+                  room: result.room,
+                  connectFourMove: result.move,
+                });
+              }
+              return;
+            }
+
+            // Handle Chess move
+            if (room.gameType === "chess" && from && to) {
+              const result = makeMove(roomId, playerId, from, to, promotion);
+              if (!result.success) {
+                ws.send(JSON.stringify({ type: "invalid_move", message: result.message }));
+                return;
+              }
+
+              // Check if game is over
+              if (result.room!.status === "checkmate") {
+                const gameOverMessage = {
+                  type: "game_over",
+                  room: result.room,
+                  winner: result.room!.winner,
+                  secret: result.room!.secretRevealed ? result.room!.secret : undefined,
+                };
+                broadcastToRoom(result.room!, gameOverMessage);
+              } else {
+                // Broadcast move to both players
+                broadcastToRoom(result.room!, {
+                  type: "move_made",
+                  room: result.room,
+                  move: result.move,
+                });
+              }
+>>>>>>> Stashed changes
             }
             break;
           }

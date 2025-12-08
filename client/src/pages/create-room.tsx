@@ -8,6 +8,10 @@ import { useSound } from "@/hooks/use-sound";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, Loader2 } from "lucide-react";
+<<<<<<< Updated upstream
+=======
+import type { GameType } from "@shared/schema";
+>>>>>>> Stashed changes
 
 export default function CreateRoom() {
   const [, navigate] = useLocation();
@@ -15,6 +19,10 @@ export default function CreateRoom() {
   const params = new URLSearchParams(search);
   const playerName = params.get("name") || "Player";
   const secret = params.get("secret") || "";
+<<<<<<< Updated upstream
+=======
+  const gameType = (params.get("gameType") as GameType) || "chess";
+>>>>>>> Stashed changes
 
   const { room, player, isHost, isConnected, createRoom, error } = useWebSocket();
   const { playClick } = useSound();
@@ -31,9 +39,15 @@ export default function CreateRoom() {
   useEffect(() => {
     if (isConnected && !room && !isCreating && secret) {
       setIsCreating(true);
+<<<<<<< Updated upstream
       createRoom(playerName, secret);
     }
   }, [isConnected, room, playerName, secret, createRoom, isCreating]);
+=======
+      createRoom(playerName, secret, gameType);
+    }
+  }, [isConnected, room, playerName, secret, gameType, createRoom, isCreating]);
+>>>>>>> Stashed changes
 
   useEffect(() => {
     if (room?.player2Id && room?.status === "active") {
