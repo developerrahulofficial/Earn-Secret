@@ -1,4 +1,4 @@
-# 🎮 Connect the Dots - 2 Player Shape Game
+# 🎮 Secret Stakes Board Games.
 
 A real-time multiplayer game where two players take turns connecting dots to form shapes and earn points. Built with React, Express, WebSockets, and PostgreSQL.
 
