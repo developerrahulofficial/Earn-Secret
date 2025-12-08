@@ -60,6 +60,11 @@ export default function Game() {
     navigate("/");
   };
 
+  const handleBack = () => {
+    resetState();
+    navigate("/");
+  };
+
   if (!room || !player) {
     return (
       <div className="min-h-screen flex items-center justify-center">
